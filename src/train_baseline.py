@@ -32,3 +32,24 @@ print("LightGBM :", metrics(test[TARGET], pred))
 
 imp = sorted(zip(FEATURES, model.feature_importances_), key=lambda x: -x[1])
 print(imp)
+import matplotlib.pyplot as plt
+
+test = test.copy()
+test["pred"] = pred
+test["err"] = test[TARGET] - test["pred"]
+test["ape"] = (test["err"].abs() / test[TARGET]) * 100
+
+print("Biais moyen (MW) :", round(test["err"].mean(), 1))
+print("\nMAPE par heure :\n", test.groupby("hour")["ape"].mean().round(2))
+print("\nMAPE par mois :\n", test.groupby("month")["ape"].mean().round(2))
+print("\nMAPE jours fériés :", round(test[test.is_holiday == 1]["ape"].mean(), 2))
+print("MAPE hors fériés  :", round(test[test.is_holiday == 0]["ape"].mean(), 2))
+
+# 5 % des jours les plus froids
+froid = test[test["temp_24h"] < test["temp_24h"].quantile(0.05)]
+print("MAPE jours très froids :", round(froid["ape"].mean(), 2))
+
+fig, ax = plt.subplots(1, 2, figsize=(13, 4))
+test["err"].plot.hist(bins=60, ax=ax[0], title="Distribution des erreurs (MW)")
+test["err"].resample("D").mean().plot(ax=ax[1], title="Erreur moyenne par jour")
+plt.show()
